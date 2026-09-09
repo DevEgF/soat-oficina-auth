@@ -1,0 +1,113 @@
+name: deploy
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+  TF_VAR_environment: ${{ github.ref_name == 'main' && 'prod' || 'hml' }}
+  TF_IN_AUTOMATION: true
+jobs:
+  quality:
+    if: github.ref_name == 'develop' || github.ref_name == 'main'
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+  shared:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'prod' || 'hml' }}
+    concurrency:
+      group: auth-shared
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.16.0
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: terraform -chdir=infra/shared init -input=false -backend-config="bucket=${TF_VAR_state_bucket}" -backend-config="region=${AWS_REGION}"
+      - run: terraform -chdir=infra/shared plan -input=false -out=shared.tfplan
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: auth-shared-plan-${{ github.run_id }}
+          path: infra/shared/shared.tfplan
+          retention-days: 7
+          if-no-files-found: error
+      - run: terraform -chdir=infra/shared apply -input=false shared.tfplan
+  apply:
+    needs: shared
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'prod' || 'hml' }}
+      url: ${{ steps.endpoint.outputs.url }}
+    concurrency:
+      group: auth-${{ github.ref_name == 'main' && 'prod' || 'hml' }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Build hml bundles or promote verified hml bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${TF_VAR_environment}" = hml ]; then
+            npm run build
+            node scripts/bundle-manifest.mjs create
+          else
+            bash scripts/promote-bundle.sh
+          fi
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: terraform -chdir=infra init -input=false -backend-config="bucket=${TF_VAR_state_bucket}" -backend-config="region=${AWS_REGION}" -backend-config="key=auth/${TF_VAR_environment}/terraform.tfstate"
+      - run: terraform -chdir=infra plan -input=false -out=auth.tfplan
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: auth-plan-${{ env.TF_VAR_environment }}-${{ github.run_id }}
+          path: infra/auth.tfplan
+          retention-days: 7
+          if-no-files-found: error
+      - run: terraform -chdir=infra apply -input=false auth.tfplan
+      - name: Publish deployment URL
+        id: endpoint
+        run: echo "url=$(terraform -chdir=infra output -raw api_url)" >> "${GITHUB_OUTPUT}"
+      - name: Validate deployed authentication and customer ownership
+        env:
+          API_URL: ${{ steps.endpoint.outputs.url }}
+          SMOKE_ACTIVE_CPF: ${{ vars.SMOKE_ACTIVE_CPF }}
+          SMOKE_BLOCKED_CPF: ${{ vars.SMOKE_BLOCKED_CPF }}
+          SMOKE_UNKNOWN_CPF: ${{ vars.SMOKE_UNKNOWN_CPF }}
+          ENVIRONMENT: ${{ env.TF_VAR_environment }}
+        run: node scripts/smoke.mjs
+      - name: Retain successfully tested hml bundles for promotion
+        if: env.TF_VAR_environment == 'hml'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: auth-bundle-${{ github.sha }}
+          path: |
+            dist/*.zip
+            dist/manifest.json
+          retention-days: 30
+          if-no-files-found: error
