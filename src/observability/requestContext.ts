@@ -5,7 +5,7 @@ import { Tracer } from '@aws-lambda-powertools/tracer';
 import type { Environment } from '../config/environment.js';
 
 export interface RequestResult {
-  eventName: 'AuthSucceeded' | 'AuthRejected' | 'AuthDependencyFailure' | 'AuthorizerAllowed' | 'AuthorizerDenied';
+  eventName: 'AuthSucceeded' | 'AuthRejected' | 'AuthDependencyFailure' | 'AuthorizerAllowed' | 'AuthorizerDenied' | 'AuthorizerErrors';
   environment: Environment;
   requestId: string;
   statusCode: number;

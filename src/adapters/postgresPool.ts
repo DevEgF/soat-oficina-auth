@@ -19,6 +19,8 @@ export function createCustomerPool(connection: DatabaseConnection, ca: string): 
     max: 2,
     connectionTimeoutMillis: 3000,
     idleTimeoutMillis: 30000,
+    statement_timeout: 1500,
+    query_timeout: 2000,
     ssl: { ca, rejectUnauthorized: true },
   });
 }

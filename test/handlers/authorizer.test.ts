@@ -22,3 +22,10 @@ it('returns only safe UUID authorization context', async () => {
   const result = await createAuthorizerHandler('hml', () => Promise.resolve({ verify }), telemetry)(event('Bearer fixture'));
   expect(result).toEqual({ isAuthorized: true, context: { customerId: '9a8db7aa-28ae-4fc1-b784-e6cd90364cb3', scope: 'CUSTOMER', environment: 'hml', requestId: 'req-123' } });
 });
+it('records dependency failures separately while denying access', async () => {
+  const record = vi.fn();
+  const result = await createAuthorizerHandler('hml', () => Promise.reject(new Error('sensitive dependency message')), { ...telemetry, record })(event('Bearer fixture'));
+  expect(result.isAuthorized).toBe(false);
+  expect(record).toHaveBeenCalledWith(expect.objectContaining({ eventName: 'AuthorizerErrors', statusCode: 503 }));
+  expect(JSON.stringify(record.mock.calls)).not.toContain('sensitive');
+});

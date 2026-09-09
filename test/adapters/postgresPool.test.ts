@@ -9,5 +9,7 @@ it('requires a CA and keeps TLS verification enabled with bounded connections', 
   expect(pool.options.max).toBe(2);
   expect(pool.options.connectionTimeoutMillis).toBe(3000);
   expect(pool.options.idleTimeoutMillis).toBe(30000);
+  expect(pool.options.statement_timeout).toBe(1500);
+  expect(pool.options.query_timeout).toBe(2000);
   await pool.end();
 });

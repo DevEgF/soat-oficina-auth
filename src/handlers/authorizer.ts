@@ -9,6 +9,7 @@ export function createAuthorizerHandler(environment: Environment, getJwt: () => 
     const started = Date.now();
     const correlation = requestId(event.requestContext.requestId);
     let isAuthorized = false;
+    let dependencyFailed = false;
     let context: Record<string, string> = {};
     const header = event.headers?.authorization ?? event.headers?.Authorization;
     const bearer = header && header.length <= 8192 ? /^Bearer ([^\s]+)$/i.exec(header)?.[1] : undefined;
@@ -18,9 +19,11 @@ export function createAuthorizerHandler(environment: Environment, getJwt: () => 
         const claims = await jwt.verify(bearer, environment);
         isAuthorized = true;
         context = { customerId: claims.sub, scope: 'CUSTOMER', environment, requestId: correlation };
-      } catch { /* Invalid credentials and unavailable dependencies both fail closed. */ }
+      } catch (error) {
+        dependencyFailed = !(error instanceof Error && error.message === 'INVALID_TOKEN');
+      }
     }
-    telemetry.record({ eventName: isAuthorized ? 'AuthorizerAllowed' : 'AuthorizerDenied', environment, requestId: correlation, statusCode: isAuthorized ? 200 : 403, durationMs: Date.now() - started });
+    telemetry.record({ eventName: dependencyFailed ? 'AuthorizerErrors' : isAuthorized ? 'AuthorizerAllowed' : 'AuthorizerDenied', environment, requestId: correlation, statusCode: dependencyFailed ? 503 : isAuthorized ? 200 : 403, durationMs: Date.now() - started });
     return { isAuthorized, context };
   });
 }
