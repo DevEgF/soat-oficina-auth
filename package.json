@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "build": "node scripts/build.mjs",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && node scripts/test-bundle.mjs"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "2.35.0",
@@ -28,6 +28,7 @@
     "@vitest/coverage-v8": "5.0.0",
     "esbuild": "0.28.2",
     "eslint": "10.10.0",
+    "fflate": "0.8.3",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0",
     "vitest": "5.0.0",
