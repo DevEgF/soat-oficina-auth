@@ -1,5 +1,11 @@
 data "aws_caller_identity" "current" {}
 
+variable "enable_canary_start" {
+  description = "Run the post-log-group canary start step. Disabled only by mocked Terraform tests."
+  type        = bool
+  default     = true
+}
+
 locals {
   canary_name   = "oficina-${var.environment}-health"
   operations    = ["CREATE", "TRACK", "QUOTE_DECISION", "TRANSITION"]
@@ -12,6 +18,8 @@ resource "aws_s3_bucket" "canary" {
   #checkov:skip=CKV_AWS_18: This private canary-only artifacts bucket contains no application data; separate S3 access logs are outside the approved small stack.
   #checkov:skip=CKV_AWS_145: SSE-S3 is the approved artifacts encryption; there are no secrets or response bodies in artifacts.
   bucket = "${local.prefix}-canary-${data.aws_caller_identity.current.account_id}"
+  # Disposable health-only artifacts are removed with an explicitly authorized destroy.
+  force_destroy = true
 }
 resource "aws_s3_bucket_public_access_block" "canary" {
   bucket                  = aws_s3_bucket.canary.id
@@ -66,19 +74,22 @@ resource "aws_iam_role_policy" "canary" {
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObject"], Resource = "${aws_s3_bucket.canary.arn}/*" },
     { Effect = "Allow", Action = ["s3:GetBucketLocation"], Resource = aws_s3_bucket.canary.arn },
+    { Effect = "Allow", Action = ["s3:ListAllMyBuckets"], Resource = "*" },
     { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/cwsyn-${local.canary_name}-*:*" },
     { Effect = "Allow", Action = ["cloudwatch:PutMetricData"], Resource = "*", Condition = { StringEquals = { "cloudwatch:namespace" = "CloudWatchSynthetics" } } },
     { Effect = "Allow", Action = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"], Resource = "*" }
   ] })
 }
 resource "aws_synthetics_canary" "health" {
-  name                     = local.canary_name
-  artifact_s3_location     = "s3://${aws_s3_bucket.canary.id}/health/"
-  execution_role_arn       = aws_iam_role.canary.arn
-  handler                  = "health.handler"
-  zip_file                 = "${local.artifact_directory}/canary-${filesha256("${path.module}/canary/health.js")}.zip"
-  runtime_version          = "syn-nodejs-puppeteer-17.0"
-  start_canary             = true
+  name                 = local.canary_name
+  artifact_s3_location = "s3://${aws_s3_bucket.canary.id}/health/"
+  execution_role_arn   = aws_iam_role.canary.arn
+  handler              = "health.handler"
+  zip_file             = "${local.artifact_directory}/canary-${filesha256("${path.module}/canary/health.js")}.zip"
+  runtime_version      = "syn-nodejs-puppeteer-17.0"
+  # The provider starts an enabled canary before returning its engine ARN. Create it
+  # stopped so Terraform can create the engine Lambda log group first.
+  start_canary             = false
   delete_lambda            = true
   success_retention_period = 7
   failure_retention_period = 7
@@ -100,6 +111,22 @@ resource "aws_cloudwatch_log_group" "canary" {
   # The execution role cannot create this group; Terraform owns its retention.
   name              = "/aws/lambda/${split(":", aws_synthetics_canary.health.engine_arn)[6]}"
   retention_in_days = 7
+}
+resource "terraform_data" "canary_start" {
+  count = var.enable_canary_start ? 1 : 0
+
+  # Re-run after a canary replacement, whose generated Lambda engine ARN changes.
+  triggers_replace = aws_synthetics_canary.health.engine_arn
+
+  provisioner "local-exec" {
+    command = "node ${path.module}/canary/start.mjs"
+    environment = {
+      CANARY_NAME = aws_synthetics_canary.health.name
+      AWS_REGION  = var.aws_region
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.canary]
 }
 resource "aws_cloudwatch_metric_alarm" "health" {
   alarm_name          = "${local.prefix}-health"
@@ -203,7 +230,7 @@ resource "aws_cloudwatch_dashboard" "service" {
     } },
     { type = "log", x = 0, y = 27, width = 24, height = 6, properties = {
       title = "Correlated errors", region = var.aws_region, view = "table",
-      query = "SOURCE '${aws_cloudwatch_log_group.api.name}' | SOURCE '${aws_cloudwatch_log_group.lambda["auth"].name}' | SOURCE '${aws_cloudwatch_log_group.lambda["authorizer"].name}' | fields @timestamp, requestId, environment, operation, status | filter level = 'ERROR' or status >= 500 | sort @timestamp desc | limit 50"
+      query = "SOURCE '${aws_cloudwatch_log_group.api.name}' | SOURCE '${aws_cloudwatch_log_group.lambda["auth"].name}' | SOURCE '${aws_cloudwatch_log_group.lambda["authorizer"].name}' | fields @timestamp, requestId, environment, operation, eventName, coalesce(statusCode, status) as responseCode | filter level = 'ERROR' or responseCode >= 500 | sort @timestamp desc | limit 50"
     } }
   ] })
 }

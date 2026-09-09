@@ -20,9 +20,9 @@ describe('delivery safety contracts', () => {
   it('serializes shared and environment state independently, and uses OIDC', () => {
     const deploy = workflow('deploy');
     expect(deploy.permissions['id-token']).toBe('write');
-    expect(deploy.jobs.shared.concurrency).toEqual({ group: 'auth-shared', 'cancel-in-progress': false });
-    expect(deploy.jobs.apply.concurrency?.group).toContain("'prod' || 'hml'");
-    expect(deploy.jobs.apply.concurrency?.['cancel-in-progress']).toBe(false);
+    expect(deploy.jobs.shared?.concurrency).toEqual({ group: 'auth-shared', 'cancel-in-progress': false });
+    expect(deploy.jobs.apply?.concurrency?.group).toContain("'prod' || 'hml'");
+    expect(deploy.jobs.apply?.concurrency?.['cancel-in-progress']).toBe(false);
     const text = readFileSync('.github/workflows/deploy.yml', 'utf8');
     expect(text).toContain('scripts/promote-bundle.sh');
     expect(text).toContain('scripts/smoke.mjs');
@@ -38,7 +38,7 @@ describe('delivery safety contracts', () => {
   });
   it('documents authentication outcomes and protects every customer operation', () => {
     const api = parse(readFileSync('openapi/fase3.yaml', 'utf8')) as { paths: Record<string, Record<string, { responses: Record<string, unknown>; security?: unknown }>> };
-    expect(Object.keys(api.paths['/auth/token'].post.responses)).toEqual(expect.arrayContaining(['200', '400', '401', '429', '503']));
+    expect(Object.keys(api.paths['/auth/token']?.post?.responses ?? {})).toEqual(expect.arrayContaining(['200', '400', '401', '429', '503']));
     for (const [path, methods] of Object.entries(api.paths)) {
       if (path.startsWith('/api/customer/')) {
         for (const operation of Object.values(methods)) expect(operation.security).toEqual([{ bearerAuth: [] }]);

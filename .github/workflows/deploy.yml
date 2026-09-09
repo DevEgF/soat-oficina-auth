@@ -99,6 +99,9 @@ jobs:
           SMOKE_ACTIVE_CPF: ${{ vars.SMOKE_ACTIVE_CPF }}
           SMOKE_BLOCKED_CPF: ${{ vars.SMOKE_BLOCKED_CPF }}
           SMOKE_UNKNOWN_CPF: ${{ vars.SMOKE_UNKNOWN_CPF }}
+          SMOKE_OTHER_ACTIVE_CPF: ${{ vars.SMOKE_OTHER_ACTIVE_CPF }}
+          SMOKE_TRACKING_CODE: ${{ vars.SMOKE_TRACKING_CODE }}
+          OTHER_API_URL: ${{ vars.OTHER_API_URL }}
           ENVIRONMENT: ${{ env.TF_VAR_environment }}
         run: node scripts/smoke.mjs
       - name: Retain successfully tested hml bundles for promotion

@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "build": "node scripts/build.mjs",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build && node scripts/test-bundle.mjs && node scripts/test-canary.mjs"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && node scripts/test-bundle.mjs && node scripts/test-canary.mjs && node --test scripts/test-delivery.mjs"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "2.35.0",

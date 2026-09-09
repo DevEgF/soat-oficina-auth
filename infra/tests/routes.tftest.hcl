@@ -51,8 +51,9 @@ override_data {
 run "hml_routes_and_isolation" {
   command = plan
   variables {
-    state_bucket = "soat-oficina-test-state"
-    environment  = "hml"
+    state_bucket        = "soat-oficina-test-state"
+    environment         = "hml"
+    enable_canary_start = false
   }
   assert {
     condition     = aws_apigatewayv2_route.auth.route_key == "POST /auth/token" && aws_apigatewayv2_route.customer.authorization_type == "CUSTOM"
@@ -74,8 +75,9 @@ run "hml_routes_and_isolation" {
 run "prod_listener" {
   command = plan
   variables {
-    state_bucket = "soat-oficina-test-state"
-    environment  = "prod"
+    state_bucket        = "soat-oficina-test-state"
+    environment         = "prod"
+    enable_canary_start = false
   }
   assert {
     condition     = aws_apigatewayv2_integration.app.integration_uri == "arn:aws:elasticloadbalancing:us-east-1:111122223333:listener/net/prod/3333/4444" && startswith(aws_lambda_function.handler["auth"].function_name, "soat-oficina-auth-prod-")
@@ -85,8 +87,9 @@ run "prod_listener" {
 run "runtime_secret_permissions" {
   command = apply
   variables {
-    state_bucket = "soat-oficina-test-state"
-    environment  = "hml"
+    state_bucket        = "soat-oficina-test-state"
+    environment         = "hml"
+    enable_canary_start = false
   }
   assert {
     condition     = jsondecode(aws_iam_role_policy.lambda["authorizer"].policy).Statement[0].Resource == ["arn:aws:secretsmanager:us-east-1:111122223333:secret:soat-oficina/shared/jwt-test"]
