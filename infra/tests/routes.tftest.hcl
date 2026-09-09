@@ -1,4 +1,6 @@
 mock_provider "aws" {
+  mock_resource "aws_synthetics_canary" { defaults = { engine_arn = "arn:aws:lambda:us-east-1:111122223333:function:cwsyn-oficina-hml-health-test" } }
+  mock_data "aws_caller_identity" { defaults = { account_id = "111122223333" } }
   mock_resource "aws_iam_role" { defaults = { arn = "arn:aws:iam::111122223333:role/soat-oficina-auth-test" } }
   mock_resource "aws_cloudwatch_log_group" { defaults = { arn = "arn:aws:logs:us-east-1:111122223333:log-group:oficina-test" } }
   mock_resource "aws_lambda_function" {
