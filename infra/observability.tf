@@ -118,6 +118,12 @@ resource "terraform_data" "canary_start" {
   # Re-run after a canary replacement, whose generated Lambda engine ARN changes.
   triggers_replace = aws_synthetics_canary.health.engine_arn
 
+  # The provider stops RUNNING canaries for in-place configuration updates too.
+  # Restart after every update, even when its generated engine ARN is unchanged.
+  lifecycle {
+    replace_triggered_by = [aws_synthetics_canary.health]
+  }
+
   provisioner "local-exec" {
     command = "node ${path.module}/canary/start.mjs"
     environment = {

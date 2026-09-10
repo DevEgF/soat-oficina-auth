@@ -6,6 +6,13 @@ import { runInNewContext } from 'node:vm';
 import { unzipSync } from 'fflate';
 
 const source = await readFile('infra/canary/health.js');
+// Guard restart coverage for updates (schedule/retention) that preserve engine ARN.
+const observability = await readFile('infra/observability.tf', 'utf8');
+const startResource = observability.split('resource "terraform_data" "canary_start" {')[1]?.split('\nresource "')[0];
+assert.ok(startResource, 'ordered canary start resource must exist');
+assert.match(startResource, /replace_triggered_by\s*=\s*\[\s*aws_synthetics_canary\.health\s*\]/,
+  'all canary updates must trigger a start, not only engine ARN changes');
+assert.match(startResource, /depends_on\s*=\s*\[\s*aws_cloudwatch_log_group\.canary\s*\]/);
 const hash = createHash('sha256').update(source).digest('hex');
 const archive = unzipSync(await readFile(`dist/canary-${hash}.zip`));
 assert.deepEqual(Object.keys(archive), ['nodejs/node_modules/health.js']);
