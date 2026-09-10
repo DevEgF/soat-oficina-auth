@@ -8,12 +8,17 @@ previous teardown. Foundation must export private subnet IDs, Lambda SG, JWT sec
 ARN, listener ARNs and an SNS topic that accepts CloudWatch alarm notifications.
 Database must export `database_kms_key_arn`, endpoint, name, port and secret ARN.
 
-Bootstrap hml/prod namespaces and scoped SecretProviderClass RBAC from the foundation
-administrator context, then deploy application migrations and synthetic fixtures.
-Auth smoke is a complete application integration gate: missing schemas or fixtures
-are failures, not permission to skip checks. Deploy auth shared VPC Link once before
-the environment API/Lambdas. Environment pipelines serialize their own state; the
-shared state has a separate concurrency lock.
+Bootstrap hml/prod namespaces, stable application ServiceAccounts and scoped
+SecretProviderClass RBAC from the foundation administrator context. For the first
+installation, provision the shared VPC Link and environment API/Lambda resources
+through reviewed Terraform before invoking the app deployment workflow. Publish
+each resulting API URL as the app's `API_BASE_URL`, then deploy application
+migrations and synthetic fixtures. Finally run the complete auth deployment/smoke
+pipelines. Resource provisioning alone is not successful delivery: auth smoke is
+a mandatory integration gate, and missing schemas/fixtures are failures. This
+initial bootstrap ordering resolves the app's gateway-URL dependency without a
+permanent smoke bypass. Environment pipelines serialize their own state; the shared
+state has a separate concurrency lock.
 
 Required GitHub Environment variables: `AWS_REGION`, `AWS_ROLE_ARN`, `TF_STATE_BUCKET`,
 `SMOKE_ACTIVE_CPF`, `SMOKE_BLOCKED_CPF`, `SMOKE_UNKNOWN_CPF`, `SMOKE_OTHER_ACTIVE_CPF`,
