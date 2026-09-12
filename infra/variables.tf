@@ -16,6 +16,16 @@ variable "environment" {
 variable "state_bucket" {
   type = string
 }
+variable "lambda_reserved_concurrency" {
+  description = "Use 2 where account quota allows reservation, or -1 for reduced-quota accounts with no reservable capacity. API route throttling remains enabled."
+  type        = number
+  default     = 2
+  nullable    = false
+  validation {
+    condition     = contains([-1, 2], var.lambda_reserved_concurrency)
+    error_message = "Lambda concurrency must be 2 (reserved) or -1 (shared account pool)."
+  }
+}
 variable "artifact_directory" {
   type     = string
   default  = null

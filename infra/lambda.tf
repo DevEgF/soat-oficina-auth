@@ -20,7 +20,7 @@ resource "aws_lambda_function" "handler" {
   architectures                  = ["arm64"]
   memory_size                    = 256
   timeout                        = 5
-  reserved_concurrent_executions = 2
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   publish                        = true
   tracing_config { mode = "Active" }
   vpc_config {

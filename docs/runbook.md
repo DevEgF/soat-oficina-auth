@@ -28,6 +28,17 @@ order. Set `OTHER_API_URL` for cross-environment validation; it is mandatory for
 prod and points to hml. Once both APIs exist, repeat hml smoke against prod as well.
 Do not put live credentials or JWTs in GitHub variables or exported collections.
 
+Before reserving Lambda concurrency, inspect `aws lambda get-account-settings`.
+Some new accounts have only ten concurrent executions and must leave all ten
+unreserved. For those accounts, set GitHub Environment variable
+`LAMBDA_RESERVED_CONCURRENCY=-1` in both environments and pass
+`-var=lambda_reserved_concurrency=-1` for local Terraform bootstrap. The default
+remains two reserved executions per handler where the quota supports it. The
+shared-pool setting provides no per-function concurrency guarantee; both stages
+and health canaries share the account cap. Token-route throttling remains five
+requests/second with a burst of ten. Do not request a paid-plan upgrade merely
+to enable reservations for this temporary demonstration.
+
 The Terraform runner requires Node.js, AWS CLI and `synthetics:StartCanary`; the
 ordered canary helper fails the apply if startup fails. The deploy role also needs
 the exact foundation/DB state reads and service lifecycle actions documented in
