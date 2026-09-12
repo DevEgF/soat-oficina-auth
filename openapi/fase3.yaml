@@ -1,0 +1,108 @@
+openapi: 3.0.3
+info:
+  title: Oficina customer authentication
+  version: 1.0.0
+  description: Academic CPF-only authentication. CPF is not proof of identity; production identity verification requires an additional factor.
+servers:
+  - url: '{baseUrl}'
+    variables:
+      baseUrl:
+        default: http://localhost:8080
+paths:
+  /auth/token:
+    post:
+      operationId: authenticateCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cpf]
+              properties:
+                cpf: { type: string, writeOnly: true }
+      responses:
+        '200':
+          description: Active customer token; Cache-Control no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accessToken, tokenType, expiresIn]
+                properties:
+                  accessToken: { type: string }
+                  tokenType: { type: string, enum: [Bearer] }
+                  expiresIn: { type: integer, enum: [900] }
+        '400': { description: Malformed JSON or CPF }
+        '401': { description: Identical Unauthorized response for blocked or unknown customer }
+        '429': { description: Rate limit exceeded }
+        '503': { description: Authentication dependency unavailable }
+  /api/customer/os/acompanhar:
+    get:
+      operationId: trackOwnedWorkOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/trackingCode'
+      responses:
+        '200': { description: Customer-owned work order tracking }
+        '400': { description: Missing tracking code }
+        '401': { description: Missing identity }
+        '403': { description: Invalid, expired or cross-environment JWT denied by the HTTP API simple authorizer }
+        '404': { description: Unknown order or order belonging to another customer }
+  /api/customer/os/aprovar-orcamento:
+    post:
+      operationId: approveOwnedQuote
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/trackingCode'
+      responses:
+        '200': { description: Updated customer-owned work order }
+        '401': { description: Missing identity }
+        '403': { description: Invalid or cross-environment JWT }
+        '404': { description: Unknown or foreign work order }
+        '409': { description: Invalid business transition }
+  /api/customer/os/reprovar-orcamento:
+    post:
+      operationId: rejectOwnedQuote
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/trackingCode'
+      responses:
+        '200': { description: Updated customer-owned work order }
+        '401': { description: Missing identity }
+        '403': { description: Invalid or cross-environment JWT }
+        '404': { description: Unknown or foreign work order }
+        '409': { description: Invalid business transition }
+  /api/customer/os/orcamento/decisao:
+    post:
+      operationId: decideOwnedQuote
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo, decisao]
+              properties:
+                codigo: { type: string }
+                decisao: { type: string, enum: [APROVADO, RECUSADO] }
+      responses:
+        '200': { description: Updated customer-owned work order }
+        '400': { description: Invalid decision }
+        '401': { description: Missing identity }
+        '403': { description: Invalid or cross-environment JWT }
+        '404': { description: Unknown or foreign work order }
+        '409': { description: Invalid business transition }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    trackingCode:
+      in: query
+      name: codigo
+      required: true
+      schema: { type: string }
