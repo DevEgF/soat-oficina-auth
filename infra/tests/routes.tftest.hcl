@@ -84,6 +84,23 @@ run "prod_listener" {
     error_message = "Production must not target hml functions or listener."
   }
 }
+run "reduced_account_concurrency" {
+  command = plan
+  variables {
+    state_bucket                = "soat-oficina-test-state"
+    environment                 = "hml"
+    enable_canary_start         = false
+    lambda_reserved_concurrency = -1
+  }
+  assert {
+    condition     = alltrue([for function in aws_lambda_function.handler : function.reserved_concurrent_executions == -1])
+    error_message = "Accounts with no reservable capacity must use the shared account concurrency pool."
+  }
+  assert {
+    condition     = one(aws_apigatewayv2_stage.this.route_settings).throttling_rate_limit == 5 && one(aws_apigatewayv2_stage.this.route_settings).throttling_burst_limit == 10
+    error_message = "Using the account concurrency pool must preserve token-route throttling."
+  }
+}
 run "runtime_secret_permissions" {
   command = apply
   variables {

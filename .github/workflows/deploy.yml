@@ -47,6 +47,8 @@ jobs:
   apply:
     needs: shared
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_lambda_reserved_concurrency: ${{ vars.LAMBDA_RESERVED_CONCURRENCY || '2' }}
     environment:
       name: ${{ github.ref_name == 'main' && 'prod' || 'hml' }}
       url: ${{ steps.endpoint.outputs.url }}
