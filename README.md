@@ -1,5 +1,13 @@
 # Oficina Auth
 
+## Por que trocamos AWS por Oracle?
+
+**A troca foi motivada por custo e continuidade da aplicação.** Depois da demonstração na AWS, a conta foi encerrada para evitar custos recorrentes de EKS, máquinas, RDS e rede. Aproveitamos a VM Oracle já disponível, com 2 OCPUs e 12 GB, para manter a API acessível usando K3s. O PostgreSQL foi mantido no Neon para não disputar os recursos dessa VM com a aplicação, e a observabilidade ficou no New Relic.
+
+**Hoje: Oracle Cloud (VM + K3s) + Neon PostgreSQL + New Relic.** A implementação AWS permanece como histórico técnico; ela não é o ambiente ativo. A mudança preservou a engine do banco, os contratos da API e a lógica de negócio. Em troca do menor custo operacional pretendido, assumimos a manutenção de um cluster de nó único e a dependência de serviços em provedores diferentes.
+
+Este README descreve a operação atual em OCI e preserva os procedimentos AWS como histórico. A integração entre `develop` e `main` mantém a documentação e o código versionados; um merge não comprova nem executa um novo deploy OCI. Os workflows de deploy AWS permanecem desabilitados.
+
 ## Implantação atual e decisões da solução
 
 Atualizado em 13/09/2026 (horário de São Paulo). A solução opera na **Oracle Cloud Infrastructure (OCI), com K3s e PostgreSQL gerenciado no Neon**. A implementação AWS foi executada na etapa anterior e permanece versionada para rastreabilidade. A conta AWS foi encerrada pelo responsável para evitar custos recorrentes; os workflows de deploy AWS permanecem desabilitados. CI de qualidade não é sinônimo de deploy habilitado.
@@ -53,6 +61,9 @@ Os ambientes compartilham o proprietário do banco: schemas oferecem separação
 
 As evidências descrevem o ensaio realizado, não uma garantia de disponibilidade contínua. Não foi comprovada entrega de notificações por e-mail/Slack. A instalação OCI não inclui publicação do frontend, registry remoto ou pipeline completa de promoção OCI. Essas diferenças técnicas permanecem explícitas mesmo com o vídeo concluído.
 
+<details>
+<summary>Histórico AWS: arquitetura anterior e procedimentos de referência</summary>
+
 ## Arquitetura AWS preservada e verificações locais
 
 Customer authentication and authorization for the academic Phase 3 delivery.
@@ -101,3 +112,5 @@ inject the appropriate output when calling the API.
 See [architecture](docs/architecture.md) and [runbook](docs/runbook.md) for bootstrap,
 fixtures, smoke tests, promotion and destruction. Complete implementation and local
 validation before enabling the cloud deployment pipelines.
+
+</details>
