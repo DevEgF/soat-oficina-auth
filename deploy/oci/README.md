@@ -1,5 +1,9 @@
 # OCI HTTP adapter
 
+## Contexto e decisões
+
+O [README principal](../../README.md) documenta RFCs, PostgreSQL/Neon, encerramento AWS por custo, arquitetura OCI, dashboards e vídeo concluído pelo responsável. O contrato continua CPF/JWT HS256; o adaptador reutiliza os casos de uso e não implementa OTP/JWKS. Não há valores de credenciais neste guia.
+
 `src/oci` hosts the existing AuthenticateCustomer and JoseCustomerJwt domain logic
 over HTTP on port 8080. Existing Lambda handlers, Terraform and AWS workflows are
 unchanged. This is a container service, **not a serverless function**.
@@ -13,7 +17,7 @@ verification, the pool has at most two connections and bounded query timeouts.
 POST /auth/token retains the AWS token response contract. GET /health checks the
 process only, not database availability. Requests are capped at 4 KiB and 60/minute
 per replica. The server logs only generated request ID, environment, status and
-duration. Real Neon and customer end-to-end verification is required before release.
+duration. Real Neon authentication and the customer journey were verified in hml on 2026-09-12, including ownership checks and cross-environment JWT rejection. GET /health remains only a process check.
 
 Build from repository root: `docker build --platform linux/arm64 -f deploy/oci/Dockerfile -t oficina-auth-oci:20260912 .`.
 Test: `npm run lint`, `npm run typecheck`, `npm test`.
