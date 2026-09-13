@@ -6,7 +6,7 @@
 
 **Hoje: Oracle Cloud (VM + K3s) + Neon PostgreSQL + New Relic.** A implementação AWS permanece como histórico técnico; ela não é o ambiente ativo. A mudança preservou a engine do banco, os contratos da API e a lógica de negócio. Em troca do menor custo operacional pretendido, assumimos a manutenção de um cluster de nó único e a dependência de serviços em provedores diferentes.
 
-Esta página da `main` apresenta a documentação atualizada. O código da adaptação OCI e seus scripts estão na [branch develop](https://github.com/DevEgF/soat-oficina-auth/tree/develop); os diretórios AWS preservados na main não representam um novo deploy. Esta atualização altera apenas documentação.
+Este README descreve a operação atual em OCI e preserva os procedimentos AWS como histórico. A integração entre `develop` e `main` mantém a documentação e o código versionados; um merge não comprova nem executa um novo deploy OCI. Os workflows de deploy AWS permanecem desabilitados.
 
 ## Implantação atual e decisões da solução
 
@@ -75,7 +75,7 @@ Authentication emits a 15-minute HS256 JWT derived from SHA256 of the UTF-8 secr
 with UUID subject, `iss=oficina`, `aud=oficina-api`, exact `env` and CUSTOMER scope.
 JWTs contain no CPF. Unknown and blocked customers get the same 401 response.
 
-For the current OCI deployment, see the [HTTP adapter guide](https://github.com/DevEgF/soat-oficina-auth/blob/develop/deploy/oci/README.md). The Lambda ZIP promotion and Terraform states below describe the preserved AWS path; its deploy workflows are disabled.
+For the current OCI deployment, see the [HTTP adapter guide](deploy/oci/README.md). The Lambda ZIP promotion and Terraform states below describe the preserved AWS path; its deploy workflows are disabled.
 
 ## Local checks
 
@@ -106,10 +106,10 @@ State ownership: `auth/hml/terraform.tfstate`, `auth/prod/terraform.tfstate`, an
 connect privately to the NLB. They are not private API endpoints.
 
 After deployment, use `terraform -chdir=infra output -raw api_url`; the hml state
-also exposes `hml_api_url`, and prod exposes `prod_api_url`. AWS endpoints are no longer advertised as active; current OCI URLs are listed above. [OpenAPI](https://github.com/DevEgF/soat-oficina-auth/blob/develop/openapi/fase3.yaml) defaults to localhost;
+also exposes `hml_api_url`, and prod exposes `prod_api_url`. AWS endpoints are no longer advertised as active; current OCI URLs are listed above. [OpenAPI](openapi/fase3.yaml) defaults to localhost;
 inject the appropriate output when calling the API.
 
-See [architecture](https://github.com/DevEgF/soat-oficina-auth/blob/develop/docs/architecture.md) and [runbook](https://github.com/DevEgF/soat-oficina-auth/blob/develop/docs/runbook.md) for bootstrap,
+See [architecture](docs/architecture.md) and [runbook](docs/runbook.md) for bootstrap,
 fixtures, smoke tests, promotion and destruction. Complete implementation and local
 validation before enabling the cloud deployment pipelines.
 
