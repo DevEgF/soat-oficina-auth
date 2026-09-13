@@ -1,5 +1,7 @@
 # Oficina Auth
 
+> **Ambiente AWS encerrado após a demonstração para evitar custos recorrentes.** A implantação e os testes foram executados; os workflows AWS estão desabilitados e o CI permanece ativo. Consulte o [registro de execução, evidências e limites da remoção](docs/delivery/encerramento-aws.md). Não há endpoint AWS ativo anunciado.
+
 Customer authentication and authorization for the academic Phase 3 delivery.
 CPF-only authentication checks ACTIVE/BLOCKED status but does not prove identity;
 OTP or another verified factor is required before a real production use case.
@@ -43,5 +45,4 @@ claimed before deployment. [OpenAPI](openapi/fase3.yaml) defaults to localhost;
 inject the appropriate output when calling the API.
 
 See [architecture](docs/architecture.md) and [runbook](docs/runbook.md) for bootstrap,
-fixtures, smoke tests, promotion and destruction. Complete implementation and local
-validation before enabling the cloud deployment pipelines.
+fixtures, smoke tests, promotion and destruction. Cloud deployment was completed and validated before account closure. AWS workflows are now disabled; see the [execution and closure record](docs/delivery/encerramento-aws.md).
