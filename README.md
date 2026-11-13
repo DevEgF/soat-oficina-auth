@@ -1,5 +1,24 @@
 # Oficina Auth
 
+## Fase 4
+
+Na arquitetura de microsserviços os clientes pertencem ao OS Service, e nenhum serviço lê o banco de outro. O ponto de entrada de contêiner (`src/oci/main.ts`) deixou de abrir conexão com o PostgreSQL: `POST /auth/token` valida o CPF, consulta `GET {OS_SERVICE_URL}/api/internal/customers/{cpf}` e emite o mesmo JWT de cliente de antes (HS256, `scope` `["CUSTOMER"]`, 15 minutos).
+
+- **Token interno:** a consulta leva um JWT HS256 assinado com o mesmo `APP_JWT_SECRET` (chave = SHA-256 do segredo), com `sub` `soat-oficina-auth`, `scope` `["INTERNAL"]`, `iss` `oficina`, `aud` `oficina-api`, `env` do ambiente e validade de 60 segundos, reaproveitado enquanto faltarem mais de 10 segundos.
+- **Respostas:** cliente `ACTIVE` recebe o token; cliente inexistente (404 do OS Service) ou `BLOCKED` recebe 401; qualquer outro status, corpo inválido ou 2 segundos sem resposta do OS Service viram 503. CPF, token e segredo não vão para log.
+- **Configuração:** `APP_ENVIRONMENT` (`hml` ou `prod`), `APP_JWT_SECRET` (o mesmo do OS Service, mínimo de 32 bytes) e `OS_SERVICE_URL` (URL `http` ou `https`). Configuração inválida encerra o processo com o evento `InvalidStartupConfiguration`.
+
+**Rodar no kind:** com a [plataforma](https://github.com/DevEgF/soat-oficina-infra-k8s/tree/develop) no ar (ela cria o Secret `auth-service-secrets`), `scripts/deploy-kind.sh all` constrói a imagem de `deploy/oci/Dockerfile`, carrega no kind, aplica `k8s/` (ConfigMap `auth-service-config`, Deployment e Service `auth-service`, NodePort 30084), espera o rollout e confere `/health`; em caso de falha, desfaz o rollout e mostra o diagnóstico. Enquanto o cluster não for recriado com a porta 30084 publicada, o smoke do script e os testes manuais usam port-forward:
+
+```sh
+kubectl --context kind-oficina -n oficina port-forward service/auth-service 18084:8080
+curl -s -X POST http://127.0.0.1:18084/auth/token -H 'content-type: application/json' -d '{"cpf":"<CPF de um cliente do OS Service>"}'
+```
+
+Verificação local: `npm ci && npm run check` (Node 22 a 24). Arquitetura nova e saga: [OS Service](https://github.com/DevEgF/soat-oficina-os-service/tree/develop#saga) e [plataforma](https://github.com/DevEgF/soat-oficina-infra-k8s/tree/develop).
+
+O restante deste README continua como registro da fase anterior (OCI/K3s com Neon e o caminho AWS Lambda, que não mudou).
+
 ## Por que trocamos AWS por Oracle?
 
 **A troca foi motivada por custo e continuidade da aplicação.** Depois da demonstração na AWS, a conta foi encerrada para evitar custos recorrentes de EKS, máquinas, RDS e rede. Aproveitamos a VM Oracle já disponível, com 2 OCPUs e 12 GB, para manter a API acessível usando K3s. O PostgreSQL foi mantido no Neon para não disputar os recursos dessa VM com a aplicação, e a observabilidade ficou no New Relic.

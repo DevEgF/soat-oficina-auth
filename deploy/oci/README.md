@@ -1,5 +1,7 @@
 # OCI HTTP adapter
 
+> **Fase 4:** esta imagem não usa mais `AUTH_DB_CONFIG` nem PostgreSQL. A configuração passou a ser `APP_ENVIRONMENT`, `APP_JWT_SECRET` e `OS_SERVICE_URL`, e os clientes são consultados no OS Service (ver a seção "Fase 4" do [README principal](../../README.md)). O texto abaixo registra a operação OCI da fase anterior.
+
 ## Contexto e decisões
 
 O [README principal](../../README.md) documenta RFCs, PostgreSQL/Neon, encerramento AWS por custo, arquitetura OCI, dashboards e vídeo concluído pelo responsável. O contrato continua CPF/JWT HS256; o adaptador reutiliza os casos de uso e não implementa OTP/JWKS. Não há valores de credenciais neste guia.
