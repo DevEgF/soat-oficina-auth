@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import { parseEnvironment, type Environment } from '../config/environment.js';
 import type { CustomerJwt, IssuedCustomerToken, VerifiedCustomerToken } from '../ports/customerJwt.js';
+import { deriveSigningKey } from './signingKey.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -9,8 +9,7 @@ export class JoseCustomerJwt implements CustomerJwt {
   private readonly key: Uint8Array;
 
   constructor(rawSecret: string, private readonly now: () => Date = () => new Date()) {
-    if (Buffer.byteLength(rawSecret, 'utf8') < 32) throw new Error('INVALID_SIGNING_CONFIGURATION');
-    this.key = createHash('sha256').update(rawSecret, 'utf8').digest();
+    this.key = deriveSigningKey(rawSecret);
   }
 
   async issue(customerId: string, environment: Environment): Promise<IssuedCustomerToken> {

@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY src ./src
-RUN ./node_modules/.bin/esbuild src/oci/main.ts --bundle --platform=node --target=node24 --format=cjs --outfile=server.cjs --external:pg-native
+RUN ./node_modules/.bin/esbuild src/oci/main.ts --bundle --platform=node --target=node24 --format=cjs --outfile=server.cjs
 
 FROM node:24-bookworm-slim
 WORKDIR /app
