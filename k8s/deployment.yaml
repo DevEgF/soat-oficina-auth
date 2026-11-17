@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app.kubernetes.io/name: auth-service
+    app.kubernetes.io/component: application
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-service
+        app.kubernetes.io/component: application
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # Mesmo usuário (1000) definido no USER da imagem deploy/oci/Dockerfile.
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: auth-service
+          # Sem registry: a imagem entra no nó por `kind load docker-image`.
+          # O deploy troca esta tag pelo SHA do commit (overlay temporário); nunca usar latest.
+          image: soat-oficina-auth:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: auth-service-config
+          env:
+            # Mesmo valor do APP_JWT_SECRET do OS Service: assina o token do cliente e o token
+            # interno da consulta de clientes. A plataforma cria o Secret.
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-service-secrets
+                  key: APP_JWT_SECRET
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          # /health só confirma o processo; não consulta o OS Service.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3

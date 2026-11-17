@@ -6,3 +6,6 @@ coverage/
 *.tfplan
 .env
 *.log
+
+# Overlay temporário do scripts/deploy-kind.sh apply
+.deploy-overlay.*/

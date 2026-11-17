@@ -1,0 +1,13 @@
+# Configuração não sensível. O segredo de assinatura vem do Secret auth-service-secrets
+# (ver secret.example.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  labels:
+    app.kubernetes.io/name: auth-service
+data:
+  # Vai na claim env dos tokens; tem de ser o mesmo ambiente do OS Service.
+  APP_ENVIRONMENT: "hml"
+  # Os clientes pertencem ao OS Service: a consulta é GET /api/internal/customers/{cpf}.
+  OS_SERVICE_URL: "http://os-service:8080"
